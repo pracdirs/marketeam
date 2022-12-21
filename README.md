@@ -1,2 +1,2 @@
 # marketeam
-Material necesario (códigos, drives, maestras, ejecutables) para generar la maestra de clientes potenciales a visitar.
+Material necesario (códigos, driver, maestras, ejecutables) para generar la maestra de clientes potenciales a visitar.
