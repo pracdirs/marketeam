@@ -80,14 +80,14 @@ drog_excluir = ['DC','DD']
 
  
 df_final = df_maestra_clientes.copy(deep=True) #crear maestra final
-df_final['Codigo Postal'] = df_final['Codigo Postal'].str[7:]
+df_final['Codigo Postal'] = df_final['Codigo Postal'].str[7:] #seleccionar solo una parte de código postal
 df_final['Num Ident Fiscal1'] = df_final['Num Ident Fiscal1'].astype("string")
 df_final["Cliente"] = pd.to_numeric(df_final["Cliente"])
 lista_columnas = df_final.columns.tolist()
 for i in lista_columnas:
     df_final[i]=df_final[i].astype('string')
 
-df_final = df_final.loc[df_final.Cliente.isin(lista_socios)]
+#df_final = df_final.loc[df_final.Cliente.isin(lista_socios)]
 
 #Renombrar columnas
 dict = {'Cliente': 'Nºcliente','Nombre1 Cliente': 'Nombre 1',
@@ -123,7 +123,7 @@ df_final = pd.merge(left=df_final,right=df_oxxo, how='left')
 #Agregar nueva columnas
 nuevas_col = ['Portafolio Clave','Can_Estruct','Subc_Estruc',
               'Socio N.','Modelo Atención']
-for i in nuevas_col:
+for i in nuevas_col: #llenar las columnas nuevas con NA
     df_final[i] = np.nan 
 lista_columnas = df_final.columns.tolist()
 for i in lista_columnas:
@@ -237,15 +237,15 @@ df_final = df_final.reset_index()
 df_final = df_final.drop(['index'], axis=1)
 indices = df_final.index.values.tolist()
 for i in indices:
-    OficVenta = df_final.iloc[i,11]
-    Poblacion = df_final.iloc[i,5]
+    OficVenta = df_final.iloc[i,12]
+    Poblacion = df_final.iloc[i,6]
     concat_final = OficVenta + Poblacion
     df = df_portafolio.loc[df_portafolio[0] == concat_final]
     if df.empty==False:
         portafolio = str(df[1].iloc[0])
-        df_final.iloc[i,12] = portafolio
+        df_final.iloc[i,13] = portafolio
     else:
-        df_final.iloc[i,12] = "Error raro"
+        df_final.iloc[i,13] = "Error raro"
 
 #Generar lista de clientes para estructura de canal y subcanal
 vendedores_estructura = pd.DataFrame(df_info["ZA-Z1 Núm person"].values)
@@ -255,40 +255,40 @@ vendedores_estructura = vendedores_estructura[0].values.tolist()
 #Rellenar columna de can_struc u subc_struc !!!!!REVISAR NO SE COMPLETAN TODOS!!!
 df_estructura = pd.DataFrame(df_info[["ZA-Z1 Núm person","Can_Estruct","Subc_Estruc"]].values)
 for i in indices:
-    ZAvalor = df_final.iloc[i,20]
-    Z1valor = df_final.iloc[i,17]
+    ZAvalor = df_final.iloc[i,21]
+    Z1valor = df_final.iloc[i,18]
     if pd.isna(ZAvalor):
         ZAexiste = False
     else:
-        ZAexiste = df_final.iloc[i,20] in vendedores_estructura
+        ZAexiste = df_final.iloc[i,21] in vendedores_estructura
     if pd.isna(Z1valor):
         Z1existe = False
     else:
-        Z1existe = df_final.iloc[i,17] in vendedores_estructura 
+        Z1existe = df_final.iloc[i,18] in vendedores_estructura 
 
     if ZAexiste:
         df = df_estructura.loc[df_estructura[0] == ZAvalor] 
         if df.empty==False:
             can_est = str(df[1].iloc[0])
             sub_est = str(df[2].iloc[0])
-            df_final.iloc[i,13] = can_est
-            df_final.iloc[i,14] = sub_est 
+            df_final.iloc[i,14] = can_est
+            df_final.iloc[i,15] = sub_est 
         else:
-            df_final.iloc[i,13] = "Error raro df vacio ZA"
-            df_final.iloc[i,14] = "Error raro df vacio ZA" 
+            df_final.iloc[i,14] = "Error raro df vacio ZA"
+            df_final.iloc[i,15] = "Error raro df vacio ZA" 
     elif Z1existe:  
         df = df_estructura.loc[df_estructura[0] == Z1valor] 
         if df.empty==False:
             can_est = str(df[1].iloc[0])
             sub_est = str(df[2].iloc[0])
-            df_final.iloc[i,13] = can_est      
-            df_final.iloc[i,14] = sub_est 
+            df_final.iloc[i,14] = can_est      
+            df_final.iloc[i,15] = sub_est 
         else:
-            df_final.iloc[i,13] = "Error raro df vacio Z1"
-            df_final.iloc[i,14] = "Error raro df vacio Z1" 
+            df_final.iloc[i,14] = "Error raro df vacio Z1"
+            df_final.iloc[i,15] = "Error raro df vacio Z1" 
     else:
-        df_final.iloc[i,13] = "ERORR RARO no hay ZA ni Z1" 
         df_final.iloc[i,14] = "ERORR RARO no hay ZA ni Z1" 
+        df_final.iloc[i,15] = "ERORR RARO no hay ZA ni Z1" 
 
 pbar.update(10) #Actualizar barra de progreso
 
@@ -307,11 +307,11 @@ for i in indices:
         df = df_socios_Noplus.loc[df_socios_Noplus['Nºcliente'] == cliente] 
         if df.empty==False:
             tipo = str(df['Socio N.'].iloc[0])
-            df_final.iloc[i,16] = tipo
+            df_final.iloc[i,17] = tipo
         else:
-            df_final.iloc[i,16] = "Error raro"   
+            df_final.iloc[i,17] = "Error raro"   
     else:
-        df_final.iloc[i,16] = "No"
+        df_final.iloc[i,17] = "No"
 
 
 
