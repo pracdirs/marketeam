@@ -18,7 +18,7 @@ pbar = tqdm(total=100)
 
 
 #Mensajes y datos iniciales
-#Aqui se utiliza otro scrip llamado credenciales
+#Aquí se utiliza otro scrip llamado credenciales
 import credenciales as cs
 usuario = cs.usuario
 contraseña = cs.contraseña
@@ -68,10 +68,6 @@ ofventas_excluir = pd.DataFrame(df_info["of ventas a excluir"].values)
 ofventas_excluir = ofventas_excluir.dropna()
 ofventas_excluir = ofventas_excluir[0].values.tolist() 
 
-#Generar lista de socios no plus
-lista_socios = pd.DataFrame(df_info["Socios No Plus"].values)
-lista_socios = lista_socios.dropna()
-lista_socios = lista_socios[0].values.tolist() 
 
 pbar.update(10) #Actualizar barra de progreso
 
@@ -86,8 +82,6 @@ df_final["Cliente"] = pd.to_numeric(df_final["Cliente"])
 lista_columnas = df_final.columns.tolist()
 for i in lista_columnas:
     df_final[i]=df_final[i].astype('string')
-
-#df_final = df_final.loc[df_final.Cliente.isin(lista_socios)]
 
 #Renombrar columnas
 dict = {'Cliente': 'Nºcliente','Nombre1 Cliente': 'Nombre 1',
@@ -185,6 +179,7 @@ df_final = pd.concat([df_final, df_zapatocas])
 df_exitos = df_final[df_final["N ident f"].str.contains("8909006089") == True]
 df_exitos = df_exitos.reset_index()
 indices = df_exitos.index.values.tolist()
+df_exitos = df_exitos.drop(['index'], axis=1)
 exitos_excluir = []
 for i in indices:
     a ="EXPRESS" in df_exitos.iloc[i,3]
@@ -292,12 +287,16 @@ for i in indices:
 
 pbar.update(10) #Actualizar barra de progreso
 
-df_socios_Noplus = pd.DataFrame(df_info[["Socios No Plus","Socio N."]].values)
-df_socios_Noplus.rename(columns = {0:'Nºcliente',1:'Socio N.'}, inplace = True)
+#socios no plus
+df_socios_Noplus = pd.DataFrame(df_info[["Socios No Plus","Segmento socios"]].values) #llamar dataframe de info
+df_socios_Noplus.rename(columns = {0:'Nºcliente',1:'Socio N.'}, inplace = True) #cambiar nombres de columnas
+df_socios_Noplus.loc[df_socios_Noplus['Socio N.'] == 'DR', 'Socio N.'] = 'TD' #reemplazar todo DR pot TD
+sociosAU = df_socios_Noplus[df_socios_Noplus['Socio N.'].str.contains("AU", case=False)] #df que de todo lo que tenga AU
+socios_noplus = df_socios_Noplus['Nºcliente'].values.tolist() #lista de clientes socios no plus 
+sociosAU = sociosAU['Nºcliente'].values.tolist() #lista de socios que tienen AU
+df_socios_Noplus.loc[df_socios_Noplus['Nºcliente'].isin(sociosAU), 'Socio N.'] = "AU" #remplazar los que tienen AU + otras letras, solo por palara AU
 
-socios_noplus = df_socios_Noplus['Nºcliente'].values.tolist() 
-
-for i in indices:
+for i in indices: #poner SocioN en el df final
     cliente = df_final.iloc[i,0]
     if pd.isna(cliente):
         cliente_existe = False
@@ -313,7 +312,37 @@ for i in indices:
     else:
         df_final.iloc[i,17] = "No"
 
+#se sacan todos los turbo que no esten en la población turbo 
+#eliminar ktronix por nombre
+df_final[df_final.columns[3]] = df_final[df_final.columns[3]].str.upper()
+df_final[df_final.columns[6]] = df_final[df_final.columns[6]].str.upper()
+lista_eliminar =[]
+for i in indices:
+    empresa = df_final.iloc[i,3]
+    lugar = df_final.iloc[i,6]
+    empresaktronix = "KTRONIX" in empresa
+    empresa = "TURBO" in empresa
+    lugar = "TURBO" in lugar
+    if empresa and (lugar is False):
+        lista_eliminar.append(df_final.iloc[i,0])
+    if empresaktronix:
+        lista_eliminar.append(df_final.iloc[i,0])
+df_final = df_final.loc[~df_final["Nºcliente"].isin(lista_eliminar)]
 
+
+#eliminar todo lo que sea express o drogeria y que pertenescan a cadenas (valor S en clumna "dist")
+df_final = df_final.reset_index()
+indices = df_final.index.values.tolist()
+df_final = df_final.drop(['index'], axis=1)
+lista_eliminar =[] 
+df_final[df_final.columns[10]] = df_final[df_final.columns[10]].str.upper()
+for i in indices:
+    es_cadenas = df_final.iloc[i,10] == "S"
+    palabraclave = df_final.iloc[i,3]
+    es_palabra = (("DROG" in palabraclave) or ("EXPRESS" in palabraclave))
+    if es_cadenas and es_palabra:
+        lista_eliminar.append(df_final.iloc[i,0])
+df_final = df_final.loc[~df_final["Nºcliente"].isin(lista_eliminar)]
 
 #-----Ejecutar macro y cargar información de ventas directa-----
 
