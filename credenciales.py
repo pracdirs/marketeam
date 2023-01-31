@@ -47,7 +47,7 @@ texto_usuario = tk.Label(root, text = 'Usuario',
                       font=('calibre',10, 'bold'))  
 #Hacer el primer cuadro de entrada
 texto = tk.StringVar()
-texto.set("cojdacosta")
+texto.set("cobguzman")
 usuario = tk.Entry(root, font=('calibre',10,'normal'),
                    textvariable = texto)
   
@@ -56,7 +56,7 @@ texto_contraseña = tk.Label(root, text = 'Contraseña',
                        font = ('calibre',10,'bold'))
 #Hacer el segundo cuadro de entrada
 texto = tk.StringVar()
-texto.set("Nut22dic*")
+texto.set("$Febrero23")
 contraseña = tk.Entry(root, font = ('calibre',10,'normal'), 
                       textvariable = texto, show = '*')
   

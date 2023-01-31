@@ -28,7 +28,7 @@ contraseña = cs.contraseña
 ctypes.windll.user32.MessageBoxW(0, "Seleccione la maestra de clientes manualmente", "", 0)
 ruta = easygui.fileopenbox(msg="Seleccione la maestra de clientes") #seleccionar manualmente
 df_maestra_clientes = pd.read_excel(ruta,engine='openpyxl',
-                                    skiprows=1, usecols=list(range(1,48)),
+                                    skiprows=1, usecols=list(range(1,52)),
                                     dtype = str)
 df_maestra_clientes.sort_values("Cliente") #ordenar por código de clientes
 df_maestra_clientes['Observacion'] = df_maestra_clientes['Observacion'].str.upper()
@@ -76,7 +76,7 @@ drog_excluir = ['DC','DD']
 
  
 df_final = df_maestra_clientes.copy(deep=True) #crear maestra final
-df_final['Codigo Postal'] = df_final['Codigo Postal'].str[7:] #seleccionar solo una parte de código postal
+df_final['Mn T Clientes.Codigo Postal'] = df_final['Mn T Clientes.Codigo Postal'].str[7:] #seleccionar solo una parte de código postal
 df_final['Num Ident Fiscal1'] = df_final['Num Ident Fiscal1'].astype("string")
 df_final["Cliente"] = pd.to_numeric(df_final["Cliente"])
 lista_columnas = df_final.columns.tolist()
@@ -103,7 +103,8 @@ dict = {'Cliente': 'Nºcliente','Nombre1 Cliente': 'Nombre 1',
         'Num Y3 - 4': 'Y3 Núm person 3','Nomb Mercaderista 4': 'Y3 Nombre Mercaderista 4',
         'Cedula Y3 - 4': 'Y3 Cédula Mercaderista 4','Num Y8': 'Y8 Núm person 4',
         'Nomb Y8': 'Y8 Nombre Coord. Trade','Cedula Y8': 'Y8 Cédula Coord. Trade',
-        'Coordenadas Lugar': 'Cód. Loc.'}    
+        'Coordenadas Lugar': 'Cód. Loc.','Mn T Clientes.Codigo Postal':'Codigo Postal',
+        'Grupo clientes 5':'Tamaño_cliente'}    
 df_final.rename(columns=dict,inplace=True)
  
 pbar.update(10) #Actualizar barra de progreso
@@ -167,12 +168,21 @@ orden = ['Nºcliente', 'Cód. Loc.', 'Nombre 1', 'Coment referentes di',
                      'Y3 Núm person 3', 'Y3 Nombre Mercaderista 4',
                      'Y3 Cédula Mercaderista 4', 'Y8 Núm person 4', 'Y8 Nombre Coord. Trade',
                      'Y8 Cédula Coord. Trade', 'Coordenada X', 'Coordenada Y', 'Modelo Atención',
-                     'Clientes Oxxo', 'Segmento Vital']
+                     'Clientes Oxxo', 'Segmento Vital','Nivel socioeconómico','Tamaño_cliente',
+                     'Código Dane']
 
 df_final = df_final[orden]
 
 #Agregar zapatocas como nuevos registros
-df_final = pd.concat([df_final, df_zapatocas])
+#df_final = pd.concat([df_final, df_zapatocas])
+
+#Cambiar letras por palabras en columna tamaño cliente
+df_final.loc[~df_final.Tamaño_cliente.isin(["AC","AB","AA"]), 'Tamaño_cliente'] = "Sin asignar"
+df_final['Tamaño_cliente'] = df_final['Tamaño_cliente'].replace({'AA': 'Pequeño',
+                                                                 'AB':'Mediano',
+                                                                 'AC':'Grande'})
+df_final["Tamaño_cliente"]=df_final["Tamaño_cliente"].fillna("Sin asignar")
+
 
 
 #Generar lista de los números de clientes de los exito express a excluir
@@ -240,7 +250,7 @@ for i in indices:
         portafolio = str(df[1].iloc[0])
         df_final.iloc[i,13] = portafolio
     else:
-        df_final.iloc[i,13] = "Error raro"
+        df_final.iloc[i,13] = "Falta información en archivo info"
 
 #Generar lista de clientes para estructura de canal y subcanal
 vendedores_estructura = pd.DataFrame(df_info["ZA-Z1 Núm person"].values)
@@ -291,13 +301,14 @@ pbar.update(10) #Actualizar barra de progreso
 df_socios_Noplus = pd.DataFrame(df_info[["Socios No Plus","Segmento socios"]].values) #llamar dataframe de info
 df_socios_Noplus.rename(columns = {0:'Nºcliente',1:'Socio N.'}, inplace = True) #cambiar nombres de columnas
 df_socios_Noplus.loc[df_socios_Noplus['Socio N.'] == 'DR', 'Socio N.'] = 'TD' #reemplazar todo DR pot TD
+df_socios_Noplus = df_socios_Noplus.dropna()
 sociosAU = df_socios_Noplus[df_socios_Noplus['Socio N.'].str.contains("AU", case=False)] #df que de todo lo que tenga AU
 socios_noplus = df_socios_Noplus['Nºcliente'].values.tolist() #lista de clientes socios no plus 
 sociosAU = sociosAU['Nºcliente'].values.tolist() #lista de socios que tienen AU
 df_socios_Noplus.loc[df_socios_Noplus['Nºcliente'].isin(sociosAU), 'Socio N.'] = "AU" #remplazar los que tienen AU + otras letras, solo por palara AU
 
 for i in indices: #poner SocioN en el df final
-    cliente = df_final.iloc[i,0]
+    cliente = df_final.iloc[i,0] 
     if pd.isna(cliente):
         cliente_existe = False
     else:
@@ -339,10 +350,41 @@ df_final[df_final.columns[10]] = df_final[df_final.columns[10]].str.upper()
 for i in indices:
     es_cadenas = df_final.iloc[i,10] == "S"
     palabraclave = df_final.iloc[i,3]
-    es_palabra = (("DROG" in palabraclave) or ("EXPRESS" in palabraclave))
+    es_palabra = (("DROG" in palabraclave) or ("EXP" in palabraclave))
     if es_cadenas and es_palabra:
         lista_eliminar.append(df_final.iloc[i,0])
 df_final = df_final.loc[~df_final["Nºcliente"].isin(lista_eliminar)]
+
+
+#Eliminar segmento conveniencia cad nacional que son oxxo
+#Eliminar en segmento minimercado y superete
+#eliminar CCIAL ESPECIALIZADA
+df_final = df_final.reset_index()
+indices = df_final.index.values.tolist()
+df_final = df_final.drop(['index'], axis=1)
+lista_eliminar =[] 
+df_final[df_final.columns[16]] = df_final[df_final.columns[16]].str.upper()
+df_final[df_final.columns[15]] = df_final[df_final.columns[15]].str.upper()
+for i in indices:
+    es_cial = df_final.iloc[i,15] == "CCIAL ESPECIALIZADA"
+    es_conveniencia = df_final.iloc[i,16] == "CONVENIENCIA CAD NAL"
+    palabraclave = df_final.iloc[i,3]
+    es_ms = df_final.iloc[i,16] == (("MINIMERCADO") or ("SUPERETE"))
+    es_palabra = (("OXXO" in palabraclave) is False)
+    if ((es_conveniencia and es_palabra) or ((es_ms) or (es_cial))):
+        lista_eliminar.append(df_final.iloc[i,0])
+     
+df_final = df_final.loc[~df_final["Nºcliente"].isin(lista_eliminar)]
+
+#Agregar zapatocas como nuevos registros
+#!!! Puede que se este perdiendo información esto se hacian en la linea 175
+df_final = pd.concat([df_final, df_zapatocas])
+
+#Asegurar que no existan filas repetidas
+df_final = df_final.drop_duplicates()
+
+
+
 
 #-----Ejecutar macro y cargar información de ventas directa-----
 
@@ -386,31 +428,38 @@ df_desarrollados.rename(columns = {'Clientes desarrollados':'Nºcliente'}, inpla
 df_desarrollados['Desarrollados'] = "Si"
 df_final = pd.merge(left=df_final,right=df_desarrollados, how='left')
 df_final['Desarrollados'] =  df_final['Desarrollados'].fillna('No')
+df_final = df_final.drop_duplicates()
+df_final = df_final.reset_index()
+df_final = df_final.drop(['index'], axis=1)
 
 
 #---Armar df ordenado por socios y ventas---
 #listas de vendedores a los cuales se les encuentra los clientes aptos
-codigosZA = df_final['ZA Núm person'].values.tolist() 
-codigosZA = [x for x in codigosZA if pd.isnull(x) == False]
-codigosZA = list(set(codigosZA)) #eliminar duplicados de lista
-#en caso de no tener vendedor ZA se busca el Z1
-indicesz1 = df_final[df_final['ZA Núm person'].isnull()].index.tolist()
-codigosZ1 = df_final.iloc[indicesz1] 
-codigosZ1 = codigosZ1['Z1 Núm person'].values.tolist() 
-codigosZ1 = [x for x in codigosZ1 if pd.isnull(x) == False]
+df_ZA = df_final.dropna(subset=["ZA Núm person"])
+df_Z1 = df_final.loc[df_final["ZA Núm person"].isnull()]
+codigosZA = list(df_ZA["ZA Núm person"])
+codigosZA = list(set(codigosZA))
+codigosZ1 = list(df_Z1["Z1 Núm person"])
 codigosZ1 = list(set(codigosZ1))
+
 df_directa = pd.DataFrame(columns=df_final.columns)
 topclientes = int(df_info['Top de clientes'].iloc[0])
+
+
 for i in codigosZA:
-    df = df_final.loc[df_final['ZA Núm person'] == i]
+    #todos los clientes de un mismo ZA
+    df = df_ZA.loc[df_ZA['ZA Núm person'] == i]
+    #ordenar por socios primero y luego promedio de ventas
     df['Socio N.'] = df['Socio N.'].replace({'No': 'AAAAA'})
     df = df.sort_values(['Socio N.', 'promedio'],ascending=False)
     df['Socio N.'] = df['Socio N.'].replace({'AAAAA':'No'})
+    #condición por si hay más de 100 clientes
     if df.shape[0] > topclientes:
         df = df.head(topclientes)
     df_directa = pd.concat([df_directa, df])
+    
 for i in codigosZ1:
-    df = df_final.loc[df_final['Z1 Núm person'] == i]
+    df = df_Z1.loc[df_Z1['Z1 Núm person'] == i]
     df['Socio N.'] = df['Socio N.'].replace({'No': 'AAAAA'})
     df = df.sort_values(['Socio N.', 'promedio'],ascending=False)
     df['Socio N.'] = df['Socio N.'].replace({'AAAAA':'No'})
